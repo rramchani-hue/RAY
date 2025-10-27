@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MonStore — Démo e-commerce</title>
+  <style>
+    :root{
+      --bg:#f7fafc; --card:#ffffff; --muted:#6b7280; --primary:#2563eb; --success:#16a34a;
+      --radius:12px; --shadow: 0 6px 18px rgba(16,24,40,.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:#0f172a}
+    .container{max-width:1100px;margin:28px auto;padding:18px}
+    header{background:var(--card);padding:16px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow)}
+    .brand{font-weight:800;font-size:20px}
+    .search{width:320px;padding:8px 10px;border-radius:8px;border:1px solid #e6e9ef}
+    main{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-top:18px}
+    .grid-products{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+    .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .card img{width:100%;height:160px;object-fit:cover;border-radius:8px}
+    .title{font-weight:700;margin-top:8px}
+    .desc{font-size:13px;color:var(--muted);flex:1;margin-top:6px}
+    .price-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+    .btn{padding:8px 12px;border-radius:8px;border:1px solid #d1d5db;background:transparent;cursor:pointer}
+    .btn-primary{background:var(--primary);color:#fff;border:none}
+    aside{background:var(--card);padding:14px;border-radius:12px;box-shadow:var(--shadow)}
+    footer{margin-top:20px;text-align:center;color:var(--muted);font-size:13px}
+
+    /* Cart modal / drawer */
+    .cart-drawer{position:fixed;right:18px;bottom:18px;width:360px;background:var(--card);border-radius:12px;box-shadow:0 30px 60px rgba(2,6,23,.2);overflow:hidden}
+    .cart-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #f1f5f9}
+    .cart-list{max-height:300px;overflow:auto;padding:12px 14px}
+    .cart-item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed #eef2f7}
+    .cart-item img{width:56px;height:56px;object-fit:cover;border-radius:8px}
+    .qty{display:flex;align-items:center;gap:8px}
+    .small{font-size:13px;color:var(--muted)}
+    .summary{padding:12px 14px;border-top:1px solid #f1f5f9}
+    .flex-between{display:flex;justify-content:space-between;align-items:center}
+    .input{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9ef}
+    @media (max-width:880px){
+      main{grid-template-columns:1fr; padding-bottom:60px}
+      .search{width:160px}
+      .cart-drawer{right:10px;left:10px;width:auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex;gap:18px;align-items:center">
+        <div class="brand">MonStore</div>
+        <nav style="display:none"></nav>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center">
+        <input id="search" class="search" placeholder="Rechercher des produits..." />
+        <button id="openCart" class="btn">Panier (<span id="cartCount">0</span>)</button>
+      </div>
+    </header>
+
+    <main>
+      <section>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <h2 style="margin:0">Produits populaires</h2>
+          <div id="resultsCount" class="small">0 résultat(s)</div>
+        </div>
+
+        <div class="grid-products" id="productsGrid">
+          <!-- produits insérés par JS -->
+        </div>
+
+        <section style="margin-top:18px;background:var(--card);padding:14px;border-radius:12px;box-shadow:var(--shadow)">
+          <h3 style="margin-top:0">Comment ça marche</h3>
+          <ol style="margin:0 0 0 18px;color:var(--muted)">
+            <li>Remplacez la liste `productsData` dans le script pour vos produits.</li>
+            <li>Remplacez les images placeholders par vos images.</li>
+            <li>Intégrez un back-end pour paiement (Stripe/PayPal) si nécessaire.</li>
+          </ol>
+        </section>
+      </section>
+
+      <aside>
+        <h4 style="margin-top:0">À propos</h4>
+        <p class="small">Boutique démo — modifiez le HTML/JS pour ajouter vos produits et configuration.</p>
+
+        <div style="margin-top:12px">
+          <strong>Contact</strong>
+          <div class="small">Email: contact@monstore.ex</div>
+        </div>
+
+      </aside>
+    </main>
+
+    <footer>
+      © <span id="year"></span> MonStore — Démo.
+    </footer>
+  </div>
+
+  <!-- Cart drawer (initially hidden) -->
+  <div id="cartDrawer" class="cart-drawer" style="display:none">
+    <div class="cart-header">
+      <div style="font-weight:700">Votre panier</div>
+      <div><button id="closeCart" class="btn">Fermer</button></div>
+    </div>
+
+    <div class="cart-list" id="cartList">
+      <!-- items -->
+    </div>
+
+    <div class="summary">
+      <div class="flex-between small"><div>Sous-total</div><div id="subtotal">0.00 €</div></div>
+      <div class="flex-between small" style="margin-top:6px"><div>Livraison</div><div id="shipping">0.00 €</div></div>
+      <div class="flex-between" style="margin-top:8px;font-weight:700"><div>Total</div><div id="total">0.00 €</div></div>
+
+      <form id="checkoutForm" style="margin-top:10px">
+        <input id="nameField" class="input" placeholder="Nom complet" required style="margin-bottom:8px" />
+        <input id="emailField" class="input" placeholder="Email" type="email" required style="margin-bottom:8px" />
+        <div style="display:flex;gap:8px">
+          <button type="submit" class="btn btn-primary" style="flex:1">Passer commande</button>
+          <button id="clearCart" type="button" class="btn" style="width:120px">Vider</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Données produits — modifie selon besoin
+    const productsData = [
+      { id:1, title:"Casque Bluetooth", price:49.99, img:"https://via.placeholder.com/640x480?text=Casque", desc:"Casque sans fil, autonomie 20h."},
+      { id:2, title:"Chargeur Rapide 30W", price:19.99, img:"https://via.placeholder.com/640x480?text=Chargeur", desc:"Chargeur USB-C 30W, compact."},
+      { id:3, title:"Câble USB-C", price:7.50, img:"https://via.placeholder.com/640x480?text=Cable", desc:"Câble renforcé 1m."},
+      { id:4, title:"Enceinte Portable", price:69.00, img:"https://via.placeholder.com/640x480?text=Enceinte", desc:"Étanche IPX6, son puissant."}
+    ];
+
+    // État
+    let cart = [];
+
+    // Helpers
+    const byId = id => document.getElementById(id);
+    const format = v => v.toFixed(2) + " €";
+
+    // Rendu produits
+    function renderProducts(list){
+      const grid = byId('productsGrid');
+      grid.innerHTML = '';
+      list.forEach(p=>{
+        const el = document.createElement('article');
+        el.className = 'card';
+        el.innerHTML = `
+          <img src="${p.img}" alt="${escapeHtml(p.title)}" />
+          <div class="title">${escapeHtml(p.title)}</div>
+          <div class="desc">${escapeHtml(p.desc)}</div>
+          <div class="price-row">
+            <div style="font-weight:700">${p.price.toFixed(2)} €</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" data-id="${p.id}" data-action="view">Voir</button>
+              <button class="btn btn-primary" data-id="${p.id}" data-action="add">Ajouter</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(el);
+      });
+      byId('resultsCount').textContent = list.length + ' résultat(s)';
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+    // Recherche
+    byId('search').addEventListener('input', e=>{
+      const q = e.target.value.trim().toLowerCase();
+      const filtered = productsData.filter(p => p.title.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+      renderProducts(filtered);
+    });
+
+    // Actions produits (délégué)
+    document.addEventListener('click', e=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const id = parseInt(btn.getAttribute('data-id'));
+      const action = btn.getAttribute('data-action');
+      if(action === 'add') addToCart(id);
+      if(action === 'view') alert('Page produit non implémentée (simulation).');
+    });
+
+    // Cart functions
+    function addToCart(productId){
+      const p = productsData.find(x=>x.id===productId);
+      if(!p) return;
+      const found = cart.find(i=>i.id===productId);
+      if(found){ found.qty += 1; }
+      else cart.push({ ...p, qty:1 });
+      updateCartUI();
+      openCartDrawer();
+    }
+
+    function changeQty(id, delta){
+      const it = cart.find(i=>i.id===id);
+      if(!it) return;
+      it.qty = Math.max(1, it.qty + delta);
+      updateCartUI();
+    }
+
+    function removeItem(id){
+      cart = cart.filter(i=>i.id!==id);
+      updateCartUI();
+    }
+
+    function clearCart(){
+      cart = [];
+      updateCartUI();
+    }
+
+    function subtotal(){
+      return cart.reduce((s,i)=>s + i.price * i.qty, 0);
+    }
+
+    function updateCartUI(){
+      byId('cartCount').textContent = cart.reduce((a,c)=>a+c.qty,0);
+      const list = byId('cartList');
+      list.innerHTML = '';
+      if(cart.length === 0){
+        list.innerHTML = '<div style="padding:14px;color:var(--muted)">Votre panier est vide.</div>';
+      } else {
+        cart.forEach(it=>{
+          const row = document.createElement('div');
+          row.className = 'cart-item';
+          row.innerHTML = `
+            <img src="${it.img}" alt="${escapeHtml(it.title)}" />
+            <div style="flex:1">
+              <div style="font-weight:700">${escapeHtml(it.title)}</div>
+              <div class="small">${it.qty} x ${it.price.toFixed(2)} €</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <div class="qty">
+                <button class="btn" data-action="minus" data-id="${it.id}">-</button>
+                <div style="min-width:28px;text-align:center">${it.qty}</div>
+                <button class="btn" data-action="plus" data-id="${it.id}">+</button>
+              </div>
+              <button class="btn" style="font-size:12px;color:#b91c1c;border-color:#fca5a5" data-action="remove" data-id="${it.id}">Supprimer</button>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+      }
+
+      // event delegation for cart item buttons
+      Array.from(list.querySelectorAll('button')).forEach(b=>{
+        b.addEventListener('click', (ev)=>{
+          const act = b.getAttribute('data-action');
+          const id = parseInt(b.getAttribute('data-id'));
+          if(act==='minus') changeQty(id, -1);
+          if(act==='plus') changeQty(id, +1);
+          if(act==='remove') removeItem(id);
+        });
+      });
+
+      // summary
+      const sub = subtotal();
+      const ship = sub > 0 ? 5.0 : 0.0;
+      const tot = sub + ship;
+      byId('subtotal').textContent = format(sub);
+      byId('shipping').textContent = format(ship);
+      byId('total').textContent = format(tot);
+      byId('cartCount').textContent = cart.reduce((a,c)=>a+c.qty,0);
+    }
+
+    // Drawer controls
+    function openCartDrawer(){ byId('cartDrawer').style.display = 'block'; updateCartUI(); }
+    function closeCartDrawer(){ byId('cartDrawer').style.display = 'none'; }
+
+    byId('openCart').addEventListener('click', openCartDrawer);
+    byId('closeCart').addEventListener('click', closeCartDrawer);
+    byId('clearCart').addEventListener('click', ()=>{ if(confirm('Vider le panier ?')) clearCart(); });
+
+    // Checkout simulation
+    byId('checkoutForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      if(cart.length===0){ alert('Votre panier est vide.'); return; }
+      const name = byId('nameField').value.trim();
+      const email = byId('emailField').value.trim();
+      if(!name || !email){ alert('Remplissez le nom et l\'email.'); return; }
+      // Simulation : ici appeler votre API serveur pour créer commande / payment intent.
+      alert('Commande simulée — merci ' + name + '. Vous recevrez une confirmation par e-mail (simulation).');
+      clearCart();
+      closeCartDrawer();
+      byId('checkoutForm').reset();
+    });
+
+    // Initial render
+    renderProducts(productsData);
+    byId('year').textContent = new Date().getFullYear();
+    updateCartUI();
+
+    // Small UX: click outside drawer to close (mobile)
+    document.addEventListener('click', ev=>{
+      const drawer = byId('cartDrawer');
+      if(drawer.style.display === 'none') return;
+      const inside = drawer.contains(ev.target) || byId('openCart').contains(ev.target);
+      if(!inside) closeCartDrawer();
+    });
+  </script>
+</body>
+</html>
